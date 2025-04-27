@@ -1,0 +1,2084 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Interactivo de Puntos de Interés</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .sidebar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .control-button {
+            width: 40px;
+            height: 40px;
+            background-color: white;
+            border: none;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+        
+        .control-button:hover {
+            background-color: #f4f4f4;
+            transform: translateY(-2px);
+        }
+        
+        .panel {
+            position: absolute;
+            top: 10px;
+            right: 60px;
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            min-width: 250px;
+            max-width: 350px;
+            max-height: 500px;
+            overflow-y: auto;
+            display: none;
+            z-index: 2;
+        }
+        
+        .panel h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 8px;
+            color: #333;
+        }
+        
+        .panel .close-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            color: #777;
+        }
+        
+        .panel .close-button:hover {
+            color: #333;
+        }
+        
+        .category-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .category-checkbox {
+            display: flex;
+            align-items: center;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .category-checkbox input {
+            margin-right: 5px;
+        }
+        
+        .search-box {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        .filter-button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: background-color 0.3s;
+        }
+        
+        .filter-button:hover {
+            background-color: #45a049;
+        }
+        
+        .clear-button {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .clear-button:hover {
+            background-color: #d32f2f;
+        }
+        
+        .location-button {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .location-button i {
+            margin-right: 5px;
+        }
+        
+        .location-button:hover {
+            background-color: #0b7dda;
+        }
+        
+        .custom-popup {
+            max-width: 250px;
+        }
+        
+        .custom-popup h4 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+        
+        .custom-popup p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .directions-button {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+        }
+        
+        .directions-button:hover {
+            background-color: #3367D6;
+        }
+        
+        .basemap-option {
+            padding: 8px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .basemap-option:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .basemap-option:last-child {
+            border-bottom: none;
+        }
+        
+        /* Estilos para la paginación de resultados */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        
+        .pagination button {
+            margin: 0 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        
+        .legend {
+            background-color: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 2;
+            max-width: 300px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .legend-icon {
+            margin-right: 10px;
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .legend-text {
+            font-size: 14px;
+        }
+
+        .panel {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        padding: 15px;
+        max-width: 300px;
+        z-index: 1000;
+        display: none;
+    }
+    
+    .close-button {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        cursor: pointer;
+    }
+    
+    .help-button {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        background-color: #007bff60;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 24px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        cursor: pointer;
+        z-index: 1000;
+        transition: background-color 0.3s;
+    }
+    
+    .help-button:hover {
+        background-color: #0057b3;
+    }
+        /* Responsive para pantallas pequeñas */
+        @media (max-width: 768px) {
+            .panel {
+                right: 50px;
+                max-width: 280px;
+            }
+            
+            .legend {
+                bottom: 10px;
+                left: 10px;
+                max-width: 200px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <!-- Sidebar para controles -->
+    <div class="sidebar">
+        <button id="infoButton" class="control-button" title="Información">
+            <i class="fas fa-info"></i>
+        </button>
+        <button id="basemapButton" class="control-button" title="Cambiar Mapa Base">
+            <i class="fas fa-layer-group"></i>
+        </button>
+        <button id="filterButton" class="control-button" title="Filtrar Puntos">
+            <i class="fas fa-filter"></i>
+        </button>
+    </div>
+    
+    <!-- Panel de información -->
+    <div id="infoPanel" class="panel">
+        <div class="close-button" onclick="closePanel('infoPanel')">
+            <i class="fas fa-times"></i>
+        </div>
+        <h3 style="text-align: center;">Acerca de este mapa</h3>
+        <div id="info-content">
+            <!-- Aquí puedes colocar la información sobre el mapa --> 
+      <p>Este mapa interactivo muestra los lugares de interés en <strong>La Ceja, Antioquia, Colombia</strong>.</p>
+      <h4>¿Cómo usar el mapa?</h4>
+        <li>Usa el menú desplegable para seleccionar un lugar específico</li>
+        <li>Filtra por categorías para ver lugares similares</li>
+        <li>Usa la búsqueda libre para encontrar lugares por nombre o descripción</li>
+        <li>Haz clic en "Mostrar todos" para ver todos los lugares en el mapa</li>
+        <li>Usa "Mi ubicación" para centrar el mapa en tu posición actual</li>
+      </ul>
+      <p><h4 style="text-align: center;">Departamento Administrativo de Planeación</h4></p>
+      <h5 style="text-align: center;">V1.0</h5>
+            <!-- Puedes personalizar esta información según tus necesidades -->
+        </div>
+    </div>
+
+    <!-- Botón de ayuda (signo de interrogación) -->
+    <div id="helpButton" class="help-button" onclick="openGoogleForm()">
+    <i class="fas fa-question"></i>
+    </div>
+    
+    <!-- Panel para cambiar mapa base -->
+    <div id="basemapPanel" class="panel">
+        <div class="close-button" onclick="closePanel('basemapPanel')">
+            <i class="fas fa-times"></i>
+        </div>
+        <h3>Mapas Base</h3>
+        <div class="basemap-option" onclick="changeBasemap('osm')">
+            <i class="fas fa-map"></i> OpenStreetMap
+        </div>
+        <div class="basemap-option" onclick="changeBasemap('satellite')">
+            <i class="fas fa-satellite"></i> Satélite
+        </div>
+        <div class="basemap-option" onclick="changeBasemap('hybrid')">
+            <i class="fas fa-globe"></i> Satélite Híbrido
+        </div>
+    </div>
+    
+    <!-- Panel para filtros -->
+    <div id="filterPanel" class="panel">
+        <div class="close-button" onclick="closePanel('filterPanel')">
+            <i class="fas fa-times"></i>
+        </div>
+        <h3>Filtrar Puntos de Interés</h3>
+        
+        <!-- Filtro por nombre -->
+        <input type="text" id="nameFilter" class="search-box" placeholder="Buscar por nombre...">
+        
+        <!-- Filtro por categorías -->
+        <h4>Categorías</h4>
+        <div class="category-filter" id="categoryFilters">
+            <!-- Se llenará dinámicamente con JavaScript -->
+        </div>
+        
+        <!-- Filtro libre -->
+        <h4>Búsqueda libre</h4>
+        <input type="text" id="freeTextFilter" class="search-box" placeholder="Buscar por nombre, dirección o descripción...">
+        
+        <!-- Botones de acción -->
+        <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+            <button id="applyFilterButton" class="filter-button">
+                <i class="fas fa-search"></i> Buscar
+            </button>
+            <button id="clearFilterButton" class="clear-button">
+                <i class="fas fa-times"></i> Limpiar
+            </button>
+            <button id="showAllButton" class="filter-button">
+                <i class="fas fa-eye"></i> Ver todos
+            </button>
+        </div>
+        
+        <!-- Ubicación en tiempo real -->
+        <button id="locationButton" class="location-button">
+            <i class="fas fa-location-arrow"></i> Mostrar mi ubicación
+        </button>
+    </div>
+    
+    <!-- Leyenda del mapa -->
+    <div class="legend" id="mapLegend">
+        <h4>Leyenda</h4>
+        <!-- Se llenará dinámicamente con JavaScript -->
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    
+    <script>
+        // Configuración inicial del mapa
+        const map = L.map('map').setView([6.012950, -75.433997], 13); // Coordenadas iniciales (México City)
+        
+        // Definir capas base
+        const basemaps = {
+            osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }),
+            satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'OpenTopoMap'
+            }),
+            hybrid: L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                maxZoom: 19,
+                attribution: 'OSM-HOT'
+            })
+        };
+        
+        // Añadir capa base por defecto
+        basemaps.osm.addTo(map);
+        
+        // Definir categorías e iconos
+        const categories = [
+            { id: 'administrativo', name: 'Administrativo', icon: 'fa-building', color: '#FF5733' },
+            { id: 'cdi', name: 'CDI', icon: 'fa-building-columns', color: '#33FF57' },
+            { id: 'defensa', name: 'Defensa', icon: 'fa-shield', color: '#3357FF' },
+            { id: 'deportivos', name: 'Deportivos', icon: 'fa-futbol', color: '#FF33F5' },
+            { id: 'educativo', name: 'Educativo', icon: 'fa-graduation-cap', color: '#FFD700' },
+            { id: 'religioso', name: 'Religioso', icon: 'fa-place-of-worship', color: '#8B4513' },
+            { id: 'salud', name: 'Salud', icon: 'fa-hospital', color: '#FF0000' },
+            { id: 'emergencias', name: 'Emergencias', icon: 'fa-truck-medical', color: '#00FFFF' },
+            { id: 'servicios', name: 'Servicios', icon: 'fa-hand-holding-hand', color: '#800080' }
+        ];
+        
+        // Crear los iconos de Leaflet para cada categoría
+        const categoryIcons = {};
+        categories.forEach(cat => {
+            categoryIcons[cat.id] = L.divIcon({
+                html: `<i class="fa ${cat.icon}" style="color: ${cat.color};"></i>`,
+                className: 'custom-div-icon',
+                iconSize: [100, 100],
+                iconAnchor: [15, 15]
+            });
+        });
+        
+
+        // Icono para ubicación en tiempo real
+        const locationIcon = L.divIcon({
+            html: '<i class="fa fa-street-view" style="color: #2196F3; font-size: 24px;"></i>',
+            className: 'custom-div-icon',
+            iconSize: [100, 100],
+            iconAnchor: [15, 15]
+        });
+        
+        // Datos de ejemplo (puntos de interés)
+        const points = [
+            {
+                id: 1,
+                name: 'SEDE ADMINISTRATIVA INCERDE',
+                category: 'administrativo',
+                description: 'Sede administrativa Instituto Cejeño de la Recreación y el Deporte - INCERDE.',
+                address: 'Calle 19 # 13 - 100',
+                lat: 6.028731,
+                lng: -75.425474
+            },
+            {
+                id: 2,
+                name: 'SEDE EMPRESA DE DESARROLLO URBANO - LA CEJA EMDUCE',
+                category: 'administrativo',
+                description: 'Empresa de Desarrollo Urbano de la Ceja, Construimos Sueños que Transforman Territorios',
+                address: 'Calle 15AA N. 13E - 21 Urbanización Miraflores',
+                lat: 6.026580,
+                lng: -75.427272
+            },
+            {
+                id: 3,
+                name: 'INSTITUTO TECNICO AURELIO PATIÑO PATIÑO - ITAPP',
+                category: 'educativo',
+                description: 'El Instituto Técnico Aurelio Patiño Patiño, oferta formación media técnica con especialidades en: Artes, Informática, Electricidad y Electrónica, Medio Ambiente, Sistemas, Gestión de Redes de Datos, Recursos Naturales y Eventos Deportivos, dirigido a los estudiantes de las zonas urbanas y rurales que se encuentran cursando los grados décimo y undécimo, de las diferentes instituciones educativas públicas.',
+                address: 'Calle 19 #17-59 Centro Educativo La Paz Tercer Piso',
+                lat: 6.029218,
+                lng: -75.429299
+            },
+            {
+                id: 4,
+                name: 'CASA CONSISTORIAL ALCALDIA DE LA CEJA DEL TAMBO',
+                category: 'administrativo',
+                description: 'Sede principal de la administración municipal de La Ceja.',
+                address: 'Carrera 20 # 19 - 78 - Parque Principal',
+                lat: 6.030865,
+                lng: -75.431149
+            },
+            {
+                id: 5,
+                name: 'SUBSEDE ADMINISTRATIVA',
+                category: 'administrativo',
+                description: 'Subsede administrativa de la Secretaria de Infraestructura y la Subsecretaria de Familia y Entornos Protectores',
+                address: 'Carrera 21 # 19 - 71',
+                lat: 6.031038,
+                lng: -75.432103
+            },
+            {
+                id: 6,
+                name: 'SUBSEDE ADMINISTRATIVA',
+                category: 'administrativo',
+                description: 'Subsede administrativa del Departamento Administrativo de Planeación, Subsecretaria de Medio Ambiente y Habitat, Subsecretaria de Vivienda.',
+                address: 'Calle 20 # 19 - 14',
+                lat: 6.030867,
+                lng: -75.430520
+            },
+            {
+                id: 7,
+                name: 'SUBSEDE ADMINISTRATIVA',
+                category: 'administrativo',
+                description: 'Subsede administrativa del Departamento Administrarivo General de Servicios Administrativos, Secretaria de Salud - 1er piso. Oficina de Desarrollo Comunitario, Oficina de Comunicaciones y Oficina de Desarrollo Economico - 2do piso.',
+                address: 'Calle 20 # 19 - 43',
+                lat: 6.030821,
+                lng: -75.430737
+            },
+            {
+                id: 8,
+                name: 'FISCALIA 85 DE LA CEJA',
+                category: 'servicios',
+                description: 'DIR. SECCIONAL DE ANTIOQUIA - UNIDAD SECCIONAL - LA CEJA',
+                address: 'Calle 20 # 19-48 Piso 2 ED. José Manuel Restrepo',
+                lat: 6.030908,
+                lng: -75.430777
+            },
+            {
+                id: 9,
+                name: 'SUBSEDE ADMINISTRATIVA',
+                category: 'administrativo',
+                description: 'Subsede administrativa de Empresas Públicas de La Ceja, Secretaria de Cultura y Juventud, Secretaria de Educación y SISBEN.',
+                address: 'Calle 20 # 21 - 01 - Punto Ciem',
+                lat: 6.031418,
+                lng: -75.432964
+            },
+            {
+                id: 10,
+                name: 'CASA DE JUSTICIA Y PAZ',
+                category: 'administrativo',
+                description: 'Sede de la Casa de Justicia y Paz, Medicina Legal, Comisarias de Familia, Inspecciones de Familia, Unidad de Victimas, Policia de Infancia y Adolescencia',
+                address: 'Carrera 17 # 20 - 53',
+                lat: 6.030675,
+                lng: -75.428689
+            },
+            {
+                id: 11,
+                name: 'ARCHIVO MUNICIPAL',
+                category: 'administrativo',
+                description: 'Archivo Central Municipal',
+                address: 'Carrera 18 # 20 - 18',
+                lat: 6.030714,
+                lng: -75.429431
+            },
+            {
+                id: 12,
+                name: 'SECRETARIA DE MOVILIDAD',
+                category: 'administrativo',
+                description: 'Sede de la Secretaria de Movilidad',
+                address: 'Carrera 17 # 21 - 46 - Central Integradora de Transportes',
+                lat: 6.031573,
+                lng: -75.428197
+            },
+            {
+                id: 13,
+                name: 'CENTRO DE MONITOREO - SECRETARIA DE GOBIERNO',
+                category: 'administrativo',
+                description: 'Sede de la Secretaria de Gobierno y el Centro de Monitoreo',
+                address: 'Carrera 13A  # 19 - 33 - Bodegas BLUX,  Bodega B2',
+                lat: 6.028683,
+                lng: -75.424679
+            },
+            {
+                id: 14,
+                name: 'CENTRO CULTURAL',
+                category: 'administrativo',
+                description: 'Centro Cultural del Municipio de La Ceja',
+                address: 'Calle 19 # 22 - 27',
+                lat: 6.030715,
+                lng: -75.433400
+            },
+            {
+                id: 15,
+                name: 'CORREGIDURIA DE SAN JOSÉ',
+                category: 'administrativo',
+                description: 'Oficina de atención del Corregidor - Corregimiento de San José',
+                address: 'Corregimiento de San José',
+                lat: 5.964974,
+                lng: -75.487015
+            },
+            {
+                id: 16,
+                name: 'HOGAR DULCE MELODIA',
+                category: 'cdi',
+                description: 'Centro de Desarrollo Integral Barrio Movilia',
+                address: 'Calle 21 # 15 - 15',
+                lat: 6.030490,
+                lng: -75.426167
+            },
+            {
+                id: 17,
+                name: 'CAPERUCITA',
+                category: 'cdi',
+                description: 'Centro de Desarrollo Integral Barrio Centro',
+                address: 'Calle 21 # 21 - 46',
+                lat: 6.032173,
+                lng: -75.432148
+            },
+            {
+                id: 18,
+                name: 'LA ALDEA',
+                category: 'cdi',
+                description: 'Centro de Desarrollo Integral Barrio La Aldea',
+                address: 'Calle 6 # 16 B - 05',
+                lat: 6.018621,
+                lng: -75.432148
+            },
+            {
+                id: 19,
+                name: 'ARCOIRIS DE SUEÑOS',
+                category: 'cdi',
+                description: 'Centro de Desarrollo Integral Barrio Montesol',
+                address: 'Carrera 22 # 29 - 05',
+                lat: 6.038786,
+                lng: -75.431717
+            },
+            {
+                id: 20,
+                name: 'MUNDO DE ILUSIONES',
+                category: 'cdi',
+                description: 'Centro de Desarrollo Integral Corregimiento de San José',
+                address: 'Corregimiento de San José',
+                lat: 5.965279,
+                lng: -75.485582
+            },
+            {
+                id: 21,
+                name: 'SUBESTACIÓN DE POLICIAS SAN JOSÉ',
+                category: 'defensa',
+                description: 'Subestación de policias del Corregimiento de San José',
+                address: 'Corregimiento de San José',
+                lat: 5.966769,
+                lng: -75.490987
+            },
+            {
+                id: 22,
+                name: 'CAI PLAZA DE MERCADO',
+                category: 'defensa',
+                description: 'Centro de Atención Inmediata Policia Nacional - Plaza de Mercado',
+                address: 'Carrera 18 # 20 - 05',
+                lat: 6.030596,
+                lng: -75.429459
+            },
+            {
+                id: 23,
+                name: 'ESTACIÓN DE POLICIAS - OBREROS DE CRISTO',
+                category: 'defensa',
+                description: 'Estación de Policias barrio Obreros de Cristo',
+                address: 'Calle 23 # 23 - 95',
+                lat: 6.034115,
+                lng: -75.433637
+            },
+            {   
+                id: 24,
+                name: 'INPEC',
+                category: 'defensa',
+                description: 'Establecimiento Penitenciario de Mediana Seguridad y Carcelario de La Ceja - INPEC',
+                address: 'Carrera 18 # 20 - 54',
+                lat: 6.031005,
+                lng: -75.429358
+            },
+            {
+                id: 25,
+                name: 'PLACA POLIDEPORTIVA VEREDA SAN NICOLÁS',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en la vereda San Nicolás - Via La Ceja Rionegro - Sector Pontezuela',
+                address: 'Via La Ceja - Rionegro - Vereda San Nicolás',
+                lat: 6.055496,
+                lng: -75.421836
+            },
+            {
+                id: 26,
+                name: 'PLACA POLIDEPORTIVA VEREDA GUAMITO',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en la vereda Guamito - Via La Ceja Rionegro - Escuela Maria Estevez',
+                address: 'Via La Ceja - Rionegro - Institución Educativa Maria Estevez - Entrada Parcelación El Yarumo',
+                lat: 6.049333,
+                lng: -75.393242
+            },
+            {
+                id: 27,
+                name: 'PLACA POLIDEPORTIVA VEREDA SAN MIGUEL',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en la vereda San Miguel',
+                address: 'Vereda San Miguel - Sector Parcelación Reserva Silvestre',
+                lat: 6.032676,
+                lng: -75.387991
+            },
+            {
+                id: 28,
+                name: 'PLACA POLIDEPORTIVA VEREDA LAS LOMITAS',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en la vereda Las Lomitas',
+                address: 'Via La Ceja - La Unión - Sector Parcelación El Cortijo',
+                lat: 6.021967,
+                lng: -75.410310
+            },
+            {
+                id: 29,
+                name: 'PLACA POLIDEPORTIVA VEREDA EL TAMBO',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en la vereda El Tambo',
+                address: 'Via La Ceja - Abejorral - Escuela Santa Teresa',
+                lat: 6.010623,
+                lng: -75.434152   
+            },
+            {
+                id: 30,
+                name: 'PLACA POLIDEPORTIVA CORREGIMIENTO DE SAN JOSÉ',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en el Corregimiento de San José',
+                address: 'Corregimiento de San José',
+                lat: 5.966278,
+                lng: -75.486554
+            },
+            {
+                id: 31,
+                name: 'PLACA POLIDEPORTIVA VEREDA LA PLAYA',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en la vereda La Playa',
+                address: 'Vereda La Playa - Via La Ceja Corregimiento de San José',
+                lat: 5.977938,
+                lng: -75.463373
+            },
+            {
+                id: 32,
+                name: 'PLACA POLIDEPORTIVA VEREDA FATIMA',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en la vereda Fatima',
+                address: 'Vereda Fatima - Sector Fonda Los Mangos',
+                lat: 5.961768,
+                lng: -75.437046
+            },
+            {
+                id: 33,
+                name: 'UNIDAD DEPORTIVA SAN JOSÉ',
+                category: 'deportivos',
+                description: 'Cancha Sintetica del Corregimiento de San José',
+                address: 'Corregimiento de San José',
+                lat: 5.965727,
+                lng: -75.487197
+            },
+            {
+                id: 34,
+                name: 'PLACA POLIDEPORTIVA VEREDA EL HIGUERON',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en la vereda El Higueron',
+                address: 'Vereda El Higueron - Sector Hosteria El Buey',
+                lat: 5.943077,
+                lng: -75.487197
+            },
+            {
+                id: 35,
+                name: 'PLACA POLIDEPORTIVA VEREDA COLMENAS',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en la vereda Colmenas',
+                address: 'Vereda Colmenas - Sector Fonda Bola Roja',
+                lat: 5.917783,
+                lng: -75.416690
+            },
+            {
+                id: 36,
+                name: 'PLACA POLIDEPORTIVA VEREDA PIEDRAS',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en la vereda Piedras',
+                address: 'Vereda Piedras - Via La Ceja Abejorral',
+                lat: 5.946673,
+                lng: -75.430379
+            },
+            {
+                id: 37,
+                name: 'PLACA POLIDEPORTIVA VEREDA SAN RAFAEL',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en la vereda San Rafael',
+                address: 'Vereda San Rafael',
+                lat: 5.945384,
+                lng: -75.452835
+            },
+            {
+                id: 38,
+                name: 'CANCHA SINTETICA VEREDA PIEDRAS',
+                category: 'deportivos',
+                description: 'Cancha Sintetica ubicada en la vereda Piedras',
+                address: 'Vereda Piedras',
+                lat: 5.946700,
+                lng: -75.429306
+            },
+            {
+                id: 39,
+                name: 'PLACA POLIDEPORTIVA VEREDA LA LOMA',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en la vereda La Loma',
+                address: 'Vereda La Loma',
+                lat: 5.960674,
+                lng: -75.472466
+            },
+            {
+                id: 40,
+                name: 'PLACA POLIDEPORTIVA VEREDA LLANADAS',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en la vereda Llanadas',
+                address: 'Vereda Llanadas',
+                lat: 5.957470,
+                lng: -75.416991
+            },
+            {
+                id: 41,
+                name: 'PLACA POLIDEPORTIVA BARRIO MONTESOL',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en el barrio Montesol',
+                address: 'Barrio Montesol',
+                lat: 6.038369,
+                lng: -75.432932
+            },
+            {
+                id: 42,
+                name: 'UNIDAD DEPORTIVA MADEROS',
+                category: 'deportivos',
+                description: 'Unidad Deportiva zona norte - Maderos',
+                address: 'Carrera 26 # 22',
+                lat: 6.034588,
+                lng: -75.436170
+            },
+            {
+                id: 43,
+                name: 'COLISEO SAN CAYETANO',
+                category: 'deportivos',
+                description: 'Coliseo Deportivo barrio San Cayetano',
+                address: 'Carrera 16 # 25 - 70',
+                lat: 6.034794,
+                lng: -75.426464
+            },
+            {
+                id: 44,
+                name: 'PLACA POLIDEPORTIVA SAN CAYETANO',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en el barrio San Cayetano',
+                address: 'Calle 26 # 14 - 39',
+                lat: 6.034333,
+                lng: -75.424741
+            },
+            {
+                id: 45,
+                name: 'UNIDAD DEPORTIVA CARLOS ALBERTO BERNAL',
+                category: 'deportivos',
+                description: 'Unidad Deportiva Carlos Alberto Bernal',
+                address: 'Calle 19 # 13 - 100',
+                lat: 6.029309,
+                lng: -75.425881
+            },
+            {
+                id: 46,
+                name: 'UNIDAD DEPORTIVA COMFAMA',
+                category: 'deportivos',
+                description: 'Unidad Deportiva COMFAMA',
+                address: 'Calle 19 # 13B - 105',
+                lat: 6.028199,
+                lng: -75.427179
+            },
+            {
+                id: 47,
+                name: 'UNIDAD DEPORTIVA HUGO HERNAN MARTINEZ - MARIA AUXILIADORA',
+                category: 'deportivos',
+                description: 'Unidad Deportiva zona occidente - Maria Auxiliadora',
+                address: 'Calle 16 # 24 - 60',
+                lat: 6.028892,
+                lng: -75.435844
+            },
+            {
+                id: 48,
+                name: 'PLACA POLIDEPORTIVA EL HIPODROMO',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en el barrio El Hipodromo',
+                address: 'Barrio Hipodromo - Sector Parques del Rio',
+                lat: 6.026961,
+                lng: -75.428932
+            },
+            {
+                id: 49,
+                name: 'PLACA POLIDEPORTIVA CRISTALES I',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en el barrio Cristale I',
+                address: 'Calle 10 # 22 - 25',
+                lat: 6.024172,
+                lng: -75.435372
+            },
+            {
+                id: 50,
+                name: 'PLACA POLIDEPORTIVA ALTOS DE LA ARGENTINA',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en el barrio Altos de La Argentina',
+                address: 'Carrera 24 # 8',
+                lat: 6.023887,
+                lng: -75.436952
+            },
+            {
+                id: 51,
+                name: 'PLACA POLIDEPORTIVA LA CIUDADELA',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en el barrio La Ciudadela',
+                address: 'Calle 13B # 7',
+                lat: 6.022160,
+                lng: -75.422359
+            },
+            {
+                id: 52,
+                name: 'UNIDAD DEPORTIVA SACUDETE AL PARQUE',
+                category: 'deportivos',
+                description: 'Complejo deportivo Sacudete al Parque zona sur - barrio La Aldea',
+                address: 'Carrera 16 # Calle 6',
+                lat: 6.017984,
+                lng: -75.431982
+            },
+            {
+                id: 53,
+                name: 'PLACA POLIDEPORTIVA ALICANTE',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en el barrio Alicante',
+                address: 'Bario Alicante',
+                lat: 6.020045,
+                lng: -75.437076
+            },
+            {
+                id: 54,
+                name: 'PLACA POLIDEPORTIVA LA MILAGROSA',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en el barrio La Milagrosa',
+                address: 'La Milagrosa',
+                lat: 6.019476,
+                lng: -75.441819
+            },
+            {
+                id: 55,
+                name: 'PLACA POLIDEPORTIVA EL PARAISO',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en el barrio El Paraiso',
+                address: 'Carrera 17B # Calle 9',
+                lat: 6.022467,
+                lng: -75.432390
+            },
+            {
+                id: 56,
+                name: 'PLACA POLIDEPORTIVA LEOMAZZARO',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en el barrio Leomazzaro',
+                address: 'Calle 25 # Carrera 11',
+                lat: 6.032590,
+                lng: -75.421317
+            },
+            {
+                id: 57,
+                name: 'PLACA POLIDEPORTIVA CIC LA ALDEA',
+                category: 'deportivos',
+                description: 'Placa Polideportiva ubicada en el barrio La Aldea',
+                address: 'Circunvalar Sur con carrera 14',
+                lat: 6.017707,
+                lng: -75.429302
+            },
+            {
+                id: 58,
+                name: 'INSTITUCIÓN EDUCATIVA MONSEÑOR ALFONSO URIBE JARAMILLO',
+                category: 'educativo',
+                description: 'Institución de educación básica secundaria - Educación desde el grado preescolar hasta el grado once',
+                address: 'Carrera 16 # 25 - 26',
+                lat: 6.034431,
+                lng: -75.426513
+            },
+            {
+                id: 59,
+                name: 'INSTITUCIÓN EDUCATIVA BERNARDO URIBE LONDOÑO - SEDE 2',
+                category: 'educativo',
+                description: 'Institución de educación básica secundaria - Educación desde el grado preescolar hasta el grado once',
+                address: 'Calle 20 # 24 - 18',
+                lat: 6.032088,
+                lng: -75.434531
+            },
+            {
+                id: 60,
+                name: 'INSTITUCIÓN EDUCATIVA BERNARDO URIBE LONDOÑO - SEDE 1',
+                category: 'educativo',
+                description: 'Institución de educación básica secundaria - Educación desde el grado preescolar hasta el grado once',
+                address: 'Carrera 13 # 21 - 100',
+                lat: 6.030730,
+                lng: -75.423197
+            },
+            {
+                id: 61,
+                name: 'INSTITUCIÓN EDUCATIVA LA PAZ - SEDE 1',
+                category: 'educativo',
+                description: 'Institución de educación básica secundaria - Educación desde el grado preescolar hasta el grado once',
+                address: 'Calle 19 # 17 - 49',
+                lat: 6.029182,
+                lng: -75.429513
+            },
+            {
+                id: 62,
+                name: 'INSTITUCIÓN EDUCATIVA LA PAZ - SEDE 2',
+                category: 'educativo',
+                description: 'Institución de educación básica secundaria - Educación desde el grado preescolar hasta el grado once',
+                address: 'Diagonal 13E # 15 AA - 60',
+                lat: 6.027018,
+                lng: -75.426960
+            },
+            {
+                id: 63,
+                name: 'INSTITUCIÓN EDUCATIVA MARIA JOSEFA MARULANDA',
+                category: 'educativo',
+                description: 'Institución de educación básica secundaria - Educación desde el grado preescolar hasta el grado once',
+                address: 'Calle 14 # 21 - 107',
+                lat: 6.026591,
+                lng: -75.433862
+            },
+            {
+                id: 64,
+                name: 'INSTITUCIÓN EDUCATIVA CONCEJO MUNICIPAL - SEDE 1',
+                category: 'educativo',
+                description: 'Institución de educación básica secundaria - Educación desde el grado preescolar hasta el grado once',
+                address: 'Calle 8 # 23 -09',
+                lat: 6.023399,
+                lng: -75.436231
+            },
+            {
+                id: 65,
+                name: 'INSTITUCIÓN EDUCATIVA CONCEJO MUNICIPAL - SEDE 2',
+                category: 'educativo',
+                description: 'Institución de educación básica secundaria - Educación desde el grado preescolar hasta el grado once',
+                address: 'Carrera 25 - Sector La Milagrosa',
+                lat: 6.019556,
+                lng: -75.441583
+            },
+            {
+                id: 67,
+                name: 'CENTRO EDUCATIVO RURAL JUAN DE DIOS ARANZAZU',
+                category: 'educativo',
+                description: 'Centro Educativo Rural de la Vereda Las Lomitas',
+                address: 'Via La Ceja - La Unión',
+                lat: 6.021772,
+                lng: -75.410328
+            },
+            {
+                id: 68,
+                name: 'CENTRO EDUCATIVO RURAL SALVADOR BERMUDEZ Y RUIZ',
+                category: 'educativo',
+                description: 'Centro Educativo Rural de la Vereda San Miguel',
+                address: 'Vereda San Miguel - Sector Reserva Silvestre',
+                lat: 6.033075,
+                lng: -75.387693
+            },
+            {
+                id: 69,
+                name: 'CENTRO EDUCATIVO RURAL SAN NICOLAS',
+                category: 'educativo',
+                description: 'Centro Educativo Rural de la Vereda San Nicolás',
+                address: 'Via La Ceja - Rionegro - Vereda San Nicolás',
+                lat: 6.055119,
+                lng: -75.421880
+            },
+            {
+                id: 70,
+                name: 'CENTRO EDUCATIVO RURAL MARIA STEVEZ',
+                category: 'educativo',
+                description: 'Centro Educativo Rural de la Vereda Guamito',
+                address: 'Via La Ceja - Rionegro - Entrada Parcelación Yarumo',
+                lat: 6.049021,
+                lng: -75.393528
+            },
+            {
+                id: 71,
+                name: 'CENTRO EDUCATIVO RURAL EL HIGUERON',
+                category: 'educativo',
+                description: 'Centro Educativo Rural de la Vereda El Higueron',
+                address: 'Vereda El Higueron',
+                lat: 5.943367,
+                lng: -75.484594
+            },
+            {
+                id: 72,
+                name: 'CENTRO EDUCATIVO RURAL ISIDORA DUQUE',
+                category: 'educativo',
+                description: 'Centro Educativo Rural de la Vereda Fatima',
+                address: 'Vereda Fatima',
+                lat: 5.961737,
+                lng: -75.437082
+            },
+            {
+                id: 73,
+                name: 'INSTITUCION EDUCATIVA FRANCISCO MARIA CARDONA',
+                category: 'educativo',
+                description: 'Institución Educativa del Corregimiento de San José',
+                address: 'Corregimiento de San José',
+                lat: 5.965687,
+                lng: -75.488311
+            },
+            {
+                id: 74,
+                name: 'COLEGIO MARIA AUXILIADORA',
+                category: 'educativo',
+                description: 'Colegio Maria Auxiliadora',
+                address: 'Sector El Tambo',
+                lat: 6.015767,
+                lng: -75.432727
+            },
+            {
+                id: 75,
+                name: 'CENTRO EDUCATIVO RURAL EL TAMBO',
+                category: 'educativo',
+                description: 'Centro Educativo Rural de la Vereda El Tambo',
+                address: 'Via La Ceja - Abejorral - Vereda El Tambo',
+                lat: 6.010643,
+                lng: -75.434112
+            },
+            {
+                id: 76,
+                name: 'CENTRO EDUCATIVO RURAL COLMENAS',
+                category: 'educativo',
+                description: 'Centro Educativo Rural de la Vereda Colmenas',
+                address: 'Vereda Colmenas',
+                lat: 5.918569,
+                lng: -75.416721
+            },
+            {
+                id: 77,
+                name: 'CENTRO EDUCATIVO RURAL LLANADAS',
+                category: 'educativo',
+                description: 'Centro Educativo Rural de la Vereda Llanadas',
+                address: 'Vereda Llanadas',
+                lat: 5.957671,
+                lng: -75.417156
+            },
+            {
+                id: 78,
+                name: 'CENTRO EDUCATIVO RURAL TIBERIO DE JESUS SALAZAR',
+                category: 'educativo',
+                description: 'Centro Educativo Rural de la Vereda Piedras',
+                address: 'Vereda Piedras',
+                lat: 5.946688,
+                lng: -75.430359
+            },
+            {
+                id: 79,
+                name: 'CENTRO EDUCATIVO RURAL GENERAL JUAN MANUEL LLANO',
+                category: 'educativo',
+                description: 'Centro Educativo Rural de la Vereda San Rafael',
+                address: 'Vereda San Rafael',
+                lat: 5.945495,
+                lng: -75.453016
+            },
+            {
+                id: 80,
+                name: 'CENTRO EDUCATIVO RURAL JESUS MARIA PIEDRAHITA',
+                category: 'educativo',
+                description: 'Centro Educativo Rural de la Vereda La Miel',
+                address: 'Vereda La Miel',
+                lat: 5.950241,
+                lng: -75.494793
+            },
+            {
+                id: 81,
+                name: 'CENTRO EDUCATIVO RURAL CANDIDO BERNAL',
+                category: 'educativo',
+                description: 'Centro Educativo Rural de la Vereda La Loma',
+                address: 'Vereda La Loma',
+                lat: 5.956852,
+                lng: -75.473565
+            },
+            {
+                id: 82,
+                name: 'CENTRO EDUCATIVO RURAL ALFONSO NANO BERNAL',
+                category: 'educativo',
+                description: 'Centro Educativo Rural de la Vereda La Playa',
+                address: 'Vereda La Playa',
+                lat: 5.977982,
+                lng: -75.463540
+            },
+            {
+                id: 83,
+                name: 'COLEGIO SANTO DOMINGO SAVIO',
+                category: 'educativo',
+                description: 'Colegio Santo Domingo Savio',
+                address: 'Sector El Tambo',
+                lat: 6.018867,
+                lng: -75.435838
+            },
+            {
+                id: 84,
+                name: 'SENA REGIONAL ORIENTE',
+                category: 'educativo',
+                description: 'Sede Regional de SENA, con una amplia oferta de educación superior',
+                address: 'Calle 19 # 13 B - 233',
+                lat: 6.029409,
+                lng: -75.427612
+            },
+            {
+                id: 85,
+                name: 'PARROQUIA LA SANTISIMA TRINIDAD',
+                category: 'religioso',
+                description: 'Iglesia de La Santisima Trinidad ubicada en el barrio Montesol',
+                address: 'Carrera 22 # 27A - 90',
+                lat: 6.038462,
+                lng: -75.431256
+            },
+            {
+                id: 86,
+                name: 'CAPILLA DOMUS DEI',
+                category: 'religioso',
+                description: 'Capilla Domus Dei',
+                address: 'Calle 27 # 13 - 134',
+                lat: 6.034607,
+                lng: -75.422050
+            },
+            {
+                id: 87,
+                name: 'PARROQUIA SAN CAYETANO',
+                category: 'religioso',
+                description: 'Parroquia San Cayetano',
+                address: 'Calle 24 A # 16 - 71',
+                lat: 6.034005,
+                lng: -75.427401
+            },
+            {
+                id: 88,
+                name: 'CEMENTERIO MUNICIPAL',
+                category: 'religioso',
+                description: 'Cementerio Municipal',
+                address: 'Carrera 24 # 16 - 46',
+                lat: 6.034366,
+                lng: -75.434045
+            },
+            {
+                id: 89,
+                name: 'MONASTERIO DE LAS HERMANAS MERCEDARIAS',
+                category: 'religioso',
+                description: 'Lugar de culto religioso perteneciente a la congregación religiosa Hermanas Mercedarias',
+                address: 'Carrera 17 # Calle 22A',
+                lat: 6.032515,
+                lng: -75.427937
+            },
+            {
+                id: 90,
+                name: 'CAPILLA JESUS, MARIA Y JOSE',
+                category: 'religioso',
+                description: 'Capilla Jesus, Maria y Jose',
+                address: 'Calle 20 # 25 - 5',
+                lat: 6.032123,
+                lng: -75.435332
+            },
+            {
+                id: 91,
+                name: 'BASILICA MENOR NUESTRA SEÑORA DEL CARMEN',
+                category: 'religioso',
+                description: 'Basilica Menor Nuestra Señora del Carmen, sede principal de la iglesia catolica en el municipio',
+                address: 'Carrera 21 # 19 - 80 - Parque Principal',
+                lat: 6.031154,
+                lng: -75.432138
+            },
+            {
+                id: 92,
+                name: 'CAPILLA NUESTRA SEÑORA DE CHIQUINQUIRA',
+                category: 'religioso',
+                description: 'Capilla Nuestra Señora de Chiquinquira - Patrimonio Material e Inmaterial de la nación',
+                address: 'Carrera 20 # 19 - 38',
+                lat: 6.030479,
+                lng: -75.431239
+            },
+            {
+                id: 93,
+                name: 'CAPILLA SAN JOSE',
+                category: 'religioso',
+                description: 'Capilla de San Jose',
+                address: 'Calle 19  # 17 - 60',
+                lat: 6.029491,
+                lng: -75.429570
+            },
+            {
+                id: 94,
+                name: 'ASILO DE ANCIANOS Y CAPILLA SANTA ANA',
+                category: 'religioso',
+                description: 'Asilo de adultos mayores y capilla Santa Ana',
+                address: 'Carrera 20 # 16 - 34',
+                lat: 6.028147,
+                lng: -75.431920
+            },
+            {
+                id: 95,
+                name: 'PARROQUIA FRAY EUGENIO',
+                category: 'religioso',
+                description: 'Iglesia del Beato Fray Eugenio',
+                address: 'Carrera 20 # 16 - 34',
+                lat: 6.025352,
+                lng: -75.424675
+            },
+            {
+                id: 96,
+                name: 'PARROQUIA LA SANTA CRUZ',
+                category: 'religioso',
+                description: 'Iglesia de La Santa Cruz',
+                address: 'Calle 7A # 16A - 03',
+                lat: 6.022065,
+                lng: -75.433047
+            },
+            {
+                id: 97,
+                name: 'CAPILLA DE LAS HERMANAS FRANCISCANAS',
+                category: 'religioso',
+                description: 'Capilla de la comunidad religioso Hermanas Franciscanas',
+                address: 'Carrera 24 # 5A - 23',
+                lat: 6.023091,
+                lng: -75.437317
+            },
+            {
+                id: 98,
+                name: 'PARROQUIA EL DIVINO NIÑO',
+                category: 'religioso',
+                description: 'Iglesia del Divino Niño ubicada en el barrio El Divino Niño - Sector Payuco',
+                address: 'Carrera 22 # 5A - 35',
+                lat: 6.020619,
+                lng: -75.438579
+            },
+            {
+                id: 99,
+                name: 'CAPILLA SAN RAFAEL',
+                category: 'religioso',
+                description: 'Capilla San Rafael ubicada en la Vereda San Rafael',
+                address: 'Vereda San Rafael',
+                lat: 5.946256,
+                lng: -75.451467
+            },
+            {
+                id: 100,
+                name: 'CAPILLA NUESTRA SEÑORA DE FATIMA',
+                category: 'religioso',
+                description: 'Capilla San Rafael ubicada en la Vereda Fátima',
+                address: 'Vereda Fátima',
+                lat: 5.964510,
+                lng: -75.437539
+            },
+            {
+                id: 101,
+                name: 'SEMINARIO SIERVOS DEL ESPIRITU SANTO',
+                category: 'religioso',
+                description: 'Seminario Siervos del Espiritu Santo, lugar de formación para la vida en religión',
+                address: 'Vereda San Nicolás - Via La Ceja - Rionegro',
+                lat: 6.043946,
+                lng: -75.430359
+            },
+            {
+                id: 102,
+                name: "SEMINARIO NACIONAL CRISTO SACERDOTE",
+                category: "religioso",
+                description: "Seminario Nacional Cristo Sacerdote, lugar de formación para la vida en religión",
+                address: "Vereda San Nicolás - Via La Ceja - Rionegro",
+                lat: 6.046094,
+                lng: -75.429722
+            },
+            {
+                id: 103,
+                name: "NOVICIADO LA CABAÑA",
+                category: "religioso",
+                description: "El Noviciado La Cabaña de San José, es un lugar en el que se respira silencio y paz que favorecen el encuentro con Dios; una casa de formación de las religiosas Esclavas de Cristo Rey ubicada en el municipio de La Ceja – Antioquia.",
+                address: "Vereda San Nicolás - Via La Ceja - Rionegro",
+                lat: 6.041390,
+                lng: -75.427429
+            },
+            {
+                id: 104,
+                name: "PARROQUIA SAN JOSÉ",
+                category: "religioso",
+                description: "Parroquia San José ubicada en el corregimiento de San José, en el parque principal.",
+                address: "Corregimiento San José",
+                lat: 5.965523,
+                lng: -75.488592
+            },
+            {
+                id: 105,
+                name: "NOVICIADO SALESIANO SAGRADO CORAZÓN DE JESUS",
+                category: "religioso",
+                description: "Noviciado Salesiano Sagrado Corazón de Jesus lugar de formación para la vida en religión",
+                address: "Calle 4 Sector El Tambo",
+                lat: 6.016646,
+                lng: -75.438599
+            },
+            {
+                id: 106,
+                name: "HERMANAS DE LA CARIDAD DE SANTA MARIA",
+                category: "religioso",
+                description: "Nuestra congregación de las Hermanas de Caridad de Santa María cuenta con casi 300 religiosas muy activas y orientadas al futuro. Humildad, sencillez y generosidad son las palabras que nos describen mejor. Estamos al servicio de los más necesitados como lo estaba nuestra fundadora, María Clarac.",
+                address: "Parcelación El Tambo",
+                lat: 6.018561,
+                lng: -75.440341
+            },
+            {
+                id: 107,
+                name: "HERMANAS SIERVAS DE MARIA",
+                category: "religioso",
+                description: "Congregación religiosa de mujeres que se dedican a la asistencia a enfermos y los más necesitados.",
+                address: "Vereda San Nicolás - Via La Ceja - Rionegro",
+                lat: 6.045225,
+                lng: -75.428095
+            },
+            {
+                id: 108,
+                name: "CARMELITAS DESCALZAS",
+                category: "religioso",
+                description: "Las Carmelitas Descalzas, siendo un Instituto religioso de carácter estrictamente contemplativo, son sobre todo testigos claros de la primacía absoluta de Dios en la vida humana. Y por Él y respondiendo con un corazón disponible al don de la vocación personal, su existencia se convierte en una especie de ofrenda, no sólo por renunciar a la familia o a la libertad de comunicación en el mundo, sino sobre todo por subordinar toda la vida, hasta el más mínimo detalle, a la oración y firme perseverancia en la presencia de Dios.",
+                address: "Vereda San Nicolás - Via La Ceja - Rionegro",
+                lat: 6.046365,
+                lng: -75.427636
+            },
+            {
+                id: 109,
+                name: "SALÓN DEL REINO DE LOS TESTIGOS DE JEHOVÁ",
+                category: "religioso",
+                description: "Centro de congregación religiosa de los Testigos de Jehová conforme a los principios de su religión.",
+                address: "Carrera 19 # 21 - 35",
+                lat: 6.031930,
+                lng: -75.430109
+            },
+            {
+                id: 110,
+                name: "IGLESIA CRISTIANA PENTECOSTES TRINITARIA DE COLOMBIA",
+                category: "religioso",
+                description: "",
+                address: "Calle 21 # 19 - 38",
+                lat: 6.031716,
+                lng: -75.430497
+            },
+            {
+                id: 111,
+                name: "IGLESIA DE DIOS MINISTERIAL DE JESUCRISTO INTERNACIONAL",
+                category: "religioso",
+                description: "",
+                address: "Calle 22 # 21 - 26",
+                lat: 6.032963,
+                lng: -75.431835
+            },
+            {
+                id: 112,
+                name: "IGLESIA PENTECOSTAL UNIDA DE COLOMBIA - IPUC",
+                category: "religioso",
+                description: "La Iglesia es el cuerpo de Cristo en la tierra, según lo afirma el apóstol Pablo en su carta a los efesios. Por lo tanto, este cuerpo requiere trabajar armónicamente para alcanzar su objetivo principal de predicación del evangelio.",
+                address: "Carrera 24 # 17 - 32",
+                lat: 6.029797,
+                lng: -75.434994
+            },
+            {
+                id: 113,
+                name: "IGLESIA PENTECOSTÉS UNIDA INTERNACIONAL DE COLOMBIA - IPUIC",
+                category: "religioso",
+                description: "Iglesia Pentecostés Unida Internacional de Colombia (IPUIC), una organización que anuncia el mensaje apostólico. Tenemos raíces ancladas firmemente en la Biblia y una visión para ministrar a las comunidades de todo el mundo. Estamos comprometidos a alcanzar a cada persona con el evangelio. Nuestro lema es: “Todo el evangelio, a todo el mundo.",
+                address: "Carrera 24 # 17 - 32",
+                lat: 6.024905,
+                lng: -75.433832
+            },
+            {
+                id: 114,
+                name: "IGLESIA CENTRO DE FE Y ESPERANZA",
+                category: "religioso",
+                description: "Iglesia cristiana de la Misión Panamericana de Colombia, que presta sus servicios de acompañamiento, formación y capacitación espiritual a la comunidad en general.",
+                address: "Calle 21 # 22 - 100",
+                lat: 6.032450,
+                lng: -75.433149
+            },
+            {
+                id: 115,
+                name: "IGLESIA SIERVOS DE JESUS DE LA CARIDAD",
+                category: "religioso",
+                description: "",
+                address: "Vereda las Lomitas, Vía La Unión Km 1.5",
+                lat: 6.024974,
+                lng: -75.413566
+            },
+            {
+                id: 116,
+                name: "IGLESIA PENTECOSTAL UNIDA DE COLOMBIA - IPUC - CORREGIMIENTO DE SAN JOSÉ",
+                category: "religioso",
+                description: "La Iglesia es el cuerpo de Cristo en la tierra, según lo afirma el apóstol Pablo en su carta a los efesios. Por lo tanto, este cuerpo requiere trabajar armónicamente para alcanzar su objetivo principal de predicación del evangelio.",
+                address: "Corregimiento de San José",
+                lat: 5.964741,
+                lng: -75.486770
+            },
+            {
+                id: 117,
+                name: "E.S.E HOSPITAL DE LA CEJA",
+                category: "salud",
+                description: "Empresa Social del Estado Hospital de La Ceja, prestador de servicios de salud de nivel básico y medio",
+                address: "Calle 17 # 19 - 55",
+                lat: 6.028235,
+                lng: -75.431237
+            },
+            {
+                id: 118,
+                name: "CLINICA SAN JUAN DE DIOS",
+                category: "salud",
+                description: "Somos una Clínica con alto nivel resolutivo y de gran trayectoria en la región, referente en la atención integral a la patología mental. Con servicios de salud general enfocados a la atención de trauma, cirugía urgente y ambulatoria, hospitalización general, cuidado crítico, consulta ambulatoria y apoyo diagnóstico. Ubicada en el municipio de La Ceja y dando cobertura a toda la población de Antioquia y principalmente a la región Oriente del departamento.",
+                address: "Vereda San Nicolás, Via La Ceja - Rionegro",
+                lat: 6.042964,
+                lng: -75.428060
+            },
+            {
+                id: 119,
+                name: "IPS COMFAMA - SURA",
+                category: "salud",
+                description: "Los Centros Integrales de Salud son espacios de bienestar para el cuidado de la salud desde la prevención y las decisiones conscientes",
+                address: "Calle 19 # 13 B - 105",
+                lat: 6.027670,
+                lng: -75.426521
+            },
+            {
+                id: 120,
+                name: "CENTRO DE SALUD CORREGIMIENTO DE SAN JOSÉ",
+                category: "salud",
+                description: "",
+                address: "Corregimiento de San José",
+                lat: 5.964958,
+                lng: -75.486958
+            },
+            {
+                id: 121,
+                name: "ESTACIÓN DE BOMBEROS VOLUNTARIOS DE LA CEJA",
+                category: "emergencias",
+                description: "Estación del cuerpo de bomberos voluntarios de La Ceja",
+                address: "Carrea 20 # 3 - 150 - El Tambo",
+                lat: 6.014928,
+                lng: -75.434811
+            },
+            {
+                id: 122,
+                name: "SEDE CRUZ ROJA COLOMBIANA - SECCIONAL ANTIOQUIA",
+                category: "emergencias",
+                description: "",
+                address: "Calle 20 # 27 - 20",
+                lat: 6.032733,
+                lng: -75.436991
+            },
+            {
+                id: 123,
+                name: "PLAZA DE MERCADO",
+                category: "servicios",
+                description: "Plaza de Mercado del Municipio de La Ceja, lugar donde podrás encontrar un sin fin de productos frescos de nuestros campos.",
+                address: "Carrera 18 # 19 -104",
+                lat: 6.030035,
+                lng: -75.429353
+            },
+            {
+                id: 124,
+                name: "CENTRO COMERCIAL PUNTO CIEM - SEDE ADMINISTRATIVA EEPP DE LA CEJA",
+                category: "servicios",
+                description: "",
+                address: "Calle 20 # 22 - 05",
+                lat: 6.031398,
+                lng: -75.432956
+            },
+            {
+                id: 125,
+                name: "CENTRAL INTEGRADORA DE TRANSPORTES - CIT",
+                category: "servicios",
+                description: "",
+                address: "Carrera 17 # 21 - 46",
+                lat: 6.031444,
+                lng: -75.428061
+            },
+            {
+                id: 126,
+                name: "BIBLIOTECA MUNICIPAL GREGORIO GUTIERREZ GONZALEZ",
+                category: "servicios",
+                description: "",
+                address: "Calle 20 # 22 - 05 - Punto Ciem",
+                lat: 6.031274,
+                lng: -75.433007
+            },
+            {
+                id: 127,
+                name: "BIBLIOTECA PUBLICA SAN JOSÉ",
+                category: "servicios",
+                description: "",
+                address: "Corregimiento de San José",
+                lat: 5.965469,
+                lng: -75.488379
+            },
+            {
+                id: 128,
+                name: "CLUB ROTARIO",
+                category: "servicios",
+                description: "",
+                address: "Calle 21 # 14 - 38",
+                lat: 6.030634,
+                lng: -75.426553
+            },
+            {
+                id: 129,
+                name: "PERSONERIA MUNICIPAL",
+                category: "servicios",
+                description: "",
+                address: "Carrera 20 # 22 - 16",
+                lat: 6.027921,
+                lng: -75.432102
+            },
+            {
+                id: 130,
+                name: "UNIDAD DE ATENCIÓN INTEGRAL - UAI",
+                category: "servicios",
+                description: "",
+                address: "Calle 21 # 14 - 47",
+                lat: 6.030717,
+                lng: -75.426784
+            },
+            {
+                id: 131,
+                name: "PARQUE EDUCATIVO VALLE DE LAS FLORES",
+                category: "servicios",
+                description: "",
+                address: "Calle 21 # 14 - 47",
+                lat: 6.030339,
+                lng: -75.426436
+            },
+            {
+                id: 132,
+                name: "CENTRO DIA GERONTOLOGICO",
+                category: "servicios",
+                description: "",
+                address: "Carrera 27 # 21A - 25",
+                lat: 6.034232,
+                lng: -75.436590
+            },
+            {
+                id: 133,
+                name: "CENTRO DIA GERONTOLOGICO CORREGIMIENTO SAN JOSÉ",
+                category: "servicios",
+                description: "",
+                address: "Corregimiento de San José",
+                lat: 5.965721,
+                lng: -75.490750
+            },
+            {
+                id: 134,
+                name: "CASA DE LA MUJER - COMISARIA SUR",
+                category: "servicios",
+                description: "",
+                address: "Calle 7A # 14 A 98",
+                lat: 6.020069,
+                lng: -75.430386
+            },
+            {
+                id: 135,
+                name: "CENTRO DE BIENESTAR ANIMAL - CBA",
+                category: "servicios",
+                description: "",
+                address: "Via La Ceja - Rionegro KM 2.2",
+                lat: 6.040316,
+                lng: -75.412391
+            },
+            {
+                id: 136,
+                name: "CENTRO DE AGRONEGOCIOS",
+                category: "servicios",
+                description: "",
+                address: "Via La Ceja - Rionegro KM 3",
+                lat: 6.041802,
+                lng: -75.409411
+            },
+            {
+                id: 137,
+                name: "BIBLIOTECA EL PARAISO",
+                category: "servicios",
+                description: "",
+                address: "Carrera 16 # 7A - 05",
+                lat: 6.020782,
+                lng: -75.430923
+            },
+            {
+                id: 138,
+                name: "CASA BIBLIOTECA MAGA DE LA MAR",
+                category: "servicios",
+                description: "",
+                address: "Carrera 27 B # 5A - 05 - Barrio La Suiza",
+                lat: 6.021676,
+                lng: -75.441721
+            },
+            {
+                id: 139,
+                name: "CENTRO DE INTEGRACIÓN CIUDADANA LA ALDEA - CIC",
+                category: "servicios",
+                description: "",
+                address: "Calle 6 - Circunvalar Sur - Barrio La Aldea",
+                lat: 6.017624,
+                lng: -75.429323
+            },
+            {
+                id: 140,
+                name: "TEATRO MUNICIPAL JUAN DE DIOS ARANZAZU",
+                category: "servicios",
+                description: "",
+                address: "Carrera 22 # 18 - 77",
+                lat: 6.030477,
+                lng: -75.433215
+            },
+            {
+                id: 141,
+                name: "SOCIEDAD DE MEJORAS PUBLICAS",
+                category: "servicios",
+                description: "",
+                address: "Carrera 22 # 18 - 85",
+                lat: 6.030627,
+                lng: -75.433270
+            },
+            {
+                id: 142,
+                name: "REGISTRADURIA MUNICIPAL DE LA CEJA",
+                category: "servicios",
+                description: "",
+                address: "Carrera 22 # 18 - 41",
+                lat: 6.030179,
+                lng: -75.433273
+            },
+            {
+                id: 143,
+                name: "JUZGADO PROMISCUO DE FAMILIA - LA CEJA",
+                category: "servicios",
+                description: "",
+                address: "Carrera 22 # 18 - 39",
+                lat: 6.030105,
+                lng: -75.433307
+            },
+            {
+                id: 144,
+                name: "OFICINA DE REGISTRO DE INSTRUMENTOS PÚBLICOS",
+                category: "servicios",
+                description: "",
+                address: "Calle 21 # 22 - 16",
+                lat: 6.032351,
+                lng: -75.432770
+            },
+            {
+                id: 145,
+                name: "NOTARIA UNICA DE LA CEJA",
+                category: "servicios",
+                description: "",
+                address: "Calle 21 # 22 - 16",
+                lat: 6.033904,
+                lng: -75.431163
+            },
+            {
+                id: 146,
+                name: "PLACA POLIDEPORTIVA VEREDA LA LOMA",
+                category: "deportivos",
+                description: "",
+                address: "Calle 21 # 22 - 16",
+                lat: 5.960893,
+                lng: -75.472446
+            },
+         // Puedes agregar más puntos según necesites
+        ];
+        
+        // Crear capas de grupos para cada categoría
+        const layers = {};
+        categories.forEach(cat => {
+            layers[cat.id] = L.layerGroup().addTo(map);
+        });
+        
+        // Grupo para la ubicación en tiempo real
+        const userLocationLayer = L.layerGroup().addTo(map);
+        let userLocationMarker = null;
+        
+        // Añadir los puntos al mapa
+        function addPointsToMap() {
+            points.forEach(point => {
+                const marker = L.marker([point.lat, point.lng], { icon: categoryIcons[point.category] })
+                    .bindPopup(createPopupContent(point));
+                
+                layers[point.category].addLayer(marker);
+                marker.properties = point; // Guardar los datos del punto en el marcador
+            });
+        }
+        
+        // Crear contenido del popup
+        function createPopupContent(point) {
+            const content = `
+                <div class="custom-popup">
+                    <h4>${point.name}</h4>
+                    <p><strong>Categoría:</strong> ${getCategoryName(point.category)}</p>
+                    <p><strong>Descripción:</strong> ${point.description}</p>
+                    <p><strong>Dirección:</strong> ${point.address}</p>
+                    <a href="https://www.google.com/maps/dir/?api=1&destination=${point.lat},${point.lng}" target="_blank" class="directions-button">
+                        <i class="fas fa-directions"></i> Cómo llegar
+                    </a>
+                </div>
+            `;
+            return content;
+        }
+        
+        // Obtener el nombre de la categoría por su ID
+        function getCategoryName(categoryId) {
+            const category = categories.find(cat => cat.id === categoryId);
+            return category ? category.name : categoryId;
+        }
+        
+        // Cambiar el mapa base
+        function changeBasemap(basemapId) {
+            // Eliminar todas las capas base
+            Object.values(basemaps).forEach(layer => {
+                if (map.hasLayer(layer)) {
+                    map.removeLayer(layer);
+                }
+            });
+            
+            // Añadir la capa base seleccionada
+            basemaps[basemapId].addTo(map);
+            
+            // Cerrar el panel
+            closePanel('basemapPanel');
+        }
+        
+        // Filtrar puntos
+        function filterPoints() {
+            const nameFilter = document.getElementById('nameFilter').value.toLowerCase();
+            const freeTextFilter = document.getElementById('freeTextFilter').value.toLowerCase();
+            
+            // Obtener categorías seleccionadas
+            const selectedCategories = [];
+            document.querySelectorAll('.category-checkbox input:checked').forEach(checkbox => {
+                selectedCategories.push(checkbox.value);
+            });
+            
+            // Limpiar todas las capas
+            categories.forEach(cat => {
+                layers[cat.id].clearLayers();
+            });
+            
+            // Filtrar y añadir puntos
+            points.forEach(point => {
+                const nameMatch = point.name.toLowerCase().includes(nameFilter);
+                const freeTextMatch = freeTextFilter === '' || 
+                                      point.name.toLowerCase().includes(freeTextFilter) || 
+                                      point.description.toLowerCase().includes(freeTextFilter) || 
+                                      point.address.toLowerCase().includes(freeTextFilter);
+                const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(point.category);
+                
+                if (nameMatch && freeTextMatch && categoryMatch) {
+                    const marker = L.marker([point.lat, point.lng], { icon: categoryIcons[point.category] })
+                        .bindPopup(createPopupContent(point));
+                    
+                    layers[point.category].addLayer(marker);
+                    marker.properties = point;
+                }
+            });
+        }
+        
+        // Mostrar todos los puntos
+        function showAllPoints() {
+            // Limpiar todas las capas
+            categories.forEach(cat => {
+                layers[cat.id].clearLayers();
+            });
+            
+            // Añadir todos los puntos
+            points.forEach(point => {
+                const marker = L.marker([point.lat, point.lng], { icon: categoryIcons[point.category] })
+                    .bindPopup(createPopupContent(point));
+                
+                layers[point.category].addLayer(marker);
+                marker.properties = point;
+            });
+            
+            // Limpiar filtros
+            document.getElementById('nameFilter').value = '';
+            document.getElementById('freeTextFilter').value = '';
+            document.querySelectorAll('.category-checkbox input').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        }
+        
+        // Limpiar filtros
+        function clearFilters() {
+            document.getElementById('nameFilter').value = '';
+            document.getElementById('freeTextFilter').value = '';
+            document.querySelectorAll('.category-checkbox input').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            // Mostrar todos los puntos
+            showAllPoints();
+        }
+        
+        // Obtener ubicación en tiempo real
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const { latitude, longitude } = position.coords;
+                    
+                    // Eliminar marcador anterior si existe
+                    if (userLocationMarker) {
+                        userLocationLayer.removeLayer(userLocationMarker);
+                    }
+                    
+                    // Crear nuevo marcador
+                    userLocationMarker = L.marker([latitude, longitude], { icon: locationIcon })
+                        .bindPopup('<strong>Tu ubicación actual</strong>')
+                        .addTo(userLocationLayer);
+                    
+                    // Centrar mapa en la ubicación
+                    map.setView([latitude, longitude], 15);
+                    userLocationMarker.openPopup();
+                    
+                }, error => {
+                    alert('No se pudo obtener tu ubicación: ' + error.message);
+                });
+            } else {
+                alert('Tu navegador no soporta geolocalización');
+            }
+        }
+        
+        // Abrir panel
+        function openPanel(panelId) {
+            // Cerrar todos los paneles
+            document.querySelectorAll('.panel').forEach(panel => {
+                panel.style.display = 'none';
+            });
+            
+            // Abrir el panel seleccionado
+            document.getElementById(panelId).style.display = 'block';
+        }
+        
+        // Cerrar panel
+        function closePanel(panelId) {
+            document.getElementById(panelId).style.display = 'none';
+        }
+        
+        // Crear controles de categorías
+        function createCategoryControls() {
+            const container = document.getElementById('categoryFilters');
+            
+            categories.forEach(cat => {
+                const div = document.createElement('div');
+                div.className = 'category-checkbox';
+                
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.id = `cat-${cat.id}`;
+                input.value = cat.id;
+                
+                const label = document.createElement('label');
+                label.htmlFor = `cat-${cat.id}`;
+                label.innerHTML = `<i class="fas ${cat.icon}" style="color: ${cat.color}; margin-right: 5px;"></i> ${cat.name}`;
+                
+                div.appendChild(input);
+                div.appendChild(label);
+                container.appendChild(div);
+            });
+        }
+        
+        // Crear leyenda
+        function createLegend() {
+            const container = document.getElementById('mapLegend');
+            
+            categories.forEach(cat => {
+                const div = document.createElement('div');
+                div.className = 'legend-item';
+                
+                div.innerHTML = `
+                    <div class="legend-icon">
+                        <i class="fas ${cat.icon}" style="color: ${cat.color};"></i>
+                    </div>
+                    <div class="legend-text">${cat.name}</div>
+                `;
+                
+                container.appendChild(div);
+            });
+            
+            // Añadir ubicación en tiempo real a la leyenda
+            const userLocationDiv = document.createElement('div');
+            userLocationDiv.className = 'legend-item';
+            userLocationDiv.innerHTML = `
+                <div class="legend-icon">
+                    <i class="fas fa-street-view" style="color: #2196F3;"></i>
+                </div>
+                <div class="legend-text">Tu ubicación</div>
+            `;
+            container.appendChild(userLocationDiv);
+        }
+        
+        // Inicializar
+        function initialize() {
+            // Añadir puntos al mapa
+            addPointsToMap();
+            
+            // Crear controles de categorías
+            createCategoryControls();
+            
+            // Crear leyenda
+            createLegend();
+            
+            // Event listeners para botones de control
+            document.getElementById('infoButton').addEventListener('click', () => {
+                openPanel('infoPanel');
+            });
+            
+            document.getElementById('basemapButton').addEventListener('click', () => {
+                openPanel('basemapPanel');
+            });
+            
+            document.getElementById('filterButton').addEventListener('click', () => {
+                openPanel('filterPanel');
+            });
+            
+            // Event listeners para filtros
+            document.getElementById('applyFilterButton').addEventListener('click', filterPoints);
+            document.getElementById('clearFilterButton').addEventListener('click', clearFilters);
+            document.getElementById('showAllButton').addEventListener('click', showAllPoints);
+            document.getElementById('locationButton').addEventListener('click', getUserLocation);
+            
+            // Event listener para Enter en los campos de búsqueda
+            document.getElementById('nameFilter').addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    filterPoints();
+                }
+            });
+            
+            document.getElementById('freeTextFilter').addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    filterPoints();
+                }
+            });
+        }
+        
+        // Inicializar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', initialize);
+        
+        // Botón de pregunta para sugerencias y comentarios
+        function openGoogleForm() {
+        // Reemplaza esta URL con la dirección de tu formulario de Google
+        const googleFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLSfgOeq5sopnisuevN102rHqtBRDhn2G4oB63qc1OQ8_RO6oYA/formrestricted";
+        window.open(googleFormUrl, "_blank");
+        }
+    
+        function closePanel(panelId) {
+        document.getElementById(panelId).style.display = 'none';
+        }
+    
+        function showInfoPanel() {
+        document.getElementById('infoPanel').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
